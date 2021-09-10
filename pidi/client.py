@@ -39,8 +39,8 @@ class ClientMPD():
         try:
             self._client.connect(server, port)
 
-        except ConnectionRefusedError:
-            raise RuntimeError("error: Connection refused to mpd/mopidy.")
+        except ConnectionRefusedError as exc:
+            raise RuntimeError("error: Connection refused to mpd/mopidy.") from exc
 
         self._client.send_idle('player')
 

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-   ▄███████▄  ▄█  ████████▄   ▄█  
-  ███    ███ ███  ███   ▀███ ███  
-  ███    ███ ███▌ ███    ███ ███▌ 
-  ███    ███ ███▌ ███    ███ ███▌ 
-▀█████████▀  ███▌ ███    ███ ███▌ 
-  ███        ███  ███    ███ ███  
-  ███        ███  ███   ▄███ ███  
- ▄████▀      █▀   ████████▀  █▀   
+   ▄███████▄  ▄█  ████████▄   ▄█
+  ███    ███ ███  ███   ▀███ ███
+  ███    ███ ███▌ ███    ███ ███▌
+  ███    ███ ███▌ ███    ███ ███▌
+▀█████████▀  ███▌ ███    ███ ███▌
+  ███        ███  ███    ███ ███
+  ███        ███  ███   ▄███ ███
+ ▄████▀      █▀   ████████▀  █▀
 
 Pidi - Pirate Display
 
@@ -132,7 +132,11 @@ def main():
                 title = currentsong.get('title', 'Untitled')
                 artist = currentsong.get('artist', 'No Artist')
                 album = currentsong.get('album', title)
-                current_track = "{title} - {artist}, {album}".format(title=title, artist=artist, album=album)
+                current_track = "{title} - {artist}, {album}".format(
+                    title=title,
+                    artist=artist,
+                    album=album)
+
                 if current_track != last_track:
                     client.get_art(args.cache_dir, args.size)
                     display.update_album_art(args.cache_dir / "current.jpg")
