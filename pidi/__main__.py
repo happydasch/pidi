@@ -132,26 +132,24 @@ def main():
                 title = currentsong.get('title', 'Untitled')
                 artist = currentsong.get('artist', 'No Artist')
                 album = currentsong.get('album', title)
-                current_track = "{title} - {artist}, {album}".format(
-                    title=title,
-                    artist=artist,
-                    album=album)
+                current_track = f"{title} - {artist}, {album}"
 
                 if current_track != last_track:
+                    print(f"pidi: got new track: {current_track}")
                     client.get_art(args.cache_dir, args.size)
                     display.update_album_art(args.cache_dir / "current.jpg")
                     last_track = current_track
 
                 display.update_overlay(
-                    shuffle=status['random'] == '1',
-                    repeat=status['repeat'] == '1',
-                    state=status['state'],
-                    volume=int(status['volume']),
-                    progress=float(status.get('elapsed', 0)) / float(currentsong['time']),
-                    elapsed=float(status.get('elapsed', 0)),
-                    title=title,
-                    album=album,
-                    artist=artist
+                    status['random'] == '1',
+                    status['repeat'] == '1',
+                    status['state'],
+                    int(status['volume']),
+                    float(status.get('elapsed', 0)) / float(currentsong['time']),
+                    float(status.get('elapsed', 0)),
+                    title,
+                    album,
+                    artist
                 )
 
                 last_update = time.time()

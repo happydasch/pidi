@@ -2,7 +2,6 @@
 Get song info.
 """
 import shutil
-import select
 from pkg_resources import iter_entry_points
 
 import mpd
@@ -35,42 +34,38 @@ class ClientMPD():
     def __init__(self, port=6600, server="localhost"):
         """Initialize mpd."""
         self._client = mpd.MPDClient()
+        self._current = None
 
         try:
+            print(f"Connecting to mpd {server}:{port}")
             self._client.connect(server, port)
+            print("Connected!")
 
         except ConnectionRefusedError as exc:
             raise RuntimeError("error: Connection refused to mpd/mopidy.") from exc
-
-        self._client.send_idle('player')
 
     def add_args(argparse):  # pylint: disable=no-self-argument
         """Expand argparse instance with client-specific args."""
 
     def currentsong(self):
         """Return current song details."""
-        self._client.noidle()
         result = self._client.currentsong()  # pylint: disable=no-member
-        self._client.send_idle('player')
         return result
 
     def status(self):
         """Return current status details."""
-        self._client.noidle()
         result = self._client.status()  # pylint: disable=no-member
-        self._client.send_idle('player')
         return result
 
-    def update_pending(self, timeout=0.1):
+    def update_pending(self, timeout=0.1):  # pylint: disable=unused-argument,no-self-use
         """Determine if anything has changed on the server."""
-        result = select.select([self._client], [], [], timeout)[0]
-        return self._client in result
+        return False
 
     def get_art(self, cache_dir, size):
         """Get the album art."""
         song = self.currentsong()
         if len(song) < 2:
-            print("album: Nothing currently playing.")
+            print("mpd: Nothing currently playing.")
             util.bytes_to_file(util.default_album_art(), cache_dir / "current.jpg")
             return
 
@@ -86,10 +81,10 @@ class ClientMPD():
 
         if file_name.is_file():
             shutil.copy(file_name, cache_dir / "current.jpg")
-            print("album: Found cached art.")
+            print("mpd: Found cached art.")
 
         else:
-            print("album: Downloading album art...")
+            print("mpd: Downloading album art...")
 
             brainz.init()
             album_art = brainz.get_cover(song, size)
@@ -100,7 +95,7 @@ class ClientMPD():
             util.bytes_to_file(album_art, cache_dir / file_name)
             util.bytes_to_file(album_art, cache_dir / "current.jpg")
 
-            print("album: Swapped art to {artist}, {title}.".format(
+            print("mpd: Swapped art to {artist}, {title}.".format(
                 artist=artist,
                 title=title
             ))
