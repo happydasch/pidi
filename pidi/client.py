@@ -1,13 +1,13 @@
 """
 Get song info.
 """
-import time
+import xml
 import shutil
+from base64 import decodebytes
 from pkg_resources import iter_entry_points
 
 import mpd
 import untangle
-from base64 import decodebytes
 from .fifo import FIFO
 
 from . import brainz
@@ -35,6 +35,8 @@ def get_client_types():
 
 
 class ClientShairportSync():
+    """Client for ShairportSync metadata pipe."""
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, args):
         self.title = ""
         self.artist = ""
@@ -53,11 +55,14 @@ class ClientShairportSync():
         self.fifo = FIFO(args.pipe, eol="</item>", skip_create=True)
 
     def add_args(argparse):  # pylint: disable=no-self-argument
-        argparse.add_argument("--pipe",
-                    help="Pipe file for shairport sync metadata.",
-                    default="/tmp/shairport-sync-metadata")
+        """Expand argparse instance with client-specific args."""
+        argparse.add_argument(
+            "--pipe",
+            help="Pipe file for shairport sync metadata.",
+            default="/tmp/shairport-sync-metadata")
 
     def status(self):
+        """Return current status details."""
         return {
             "random": self.random,
             "repeat": self.repeat,
@@ -67,6 +72,7 @@ class ClientShairportSync():
         }
 
     def currentsong(self):
+        """Return current song details."""
         self._update_pending = False
         return {
             "title": self.title,
@@ -75,40 +81,41 @@ class ClientShairportSync():
             "time": self.time
         }
 
-    def get_art(self, cache_dir, size):
+    def get_art(self, cache_dir, size):  # pylint: disable=unused-argument
         """Get the album art."""
         if self.album_art == "" or self.album_art is None:
             util.bytes_to_file(util.default_album_art(), cache_dir / "current.jpg")
             return
-    
+
         util.bytes_to_file(self.album_art, cache_dir / "current.jpg")
 
         self.pending_art = False
 
     def update_pending(self):
+        """Check if a new update is pending."""
         attempts = 0
         while True:
             data = self.fifo.read()
             if data is None or len(data) == 0:
                 attempts += 1
                 if attempts > 100:
-                    return
+                    return False
             else:
                 self._parse_data(data)
                 self._update_pending = True
-    
+
         return self._update_pending
 
     def _parse_data(self, data):
         try:
             data = untangle.parse(data)
-        except:
-            print("ClientShairportSync: failed to parse XML")
+        except (xml.sax.SAXException, AttributeError) as exp:
+            print(f"ClientShairportSync: failed to parse XML ({exp})")
             return
 
         dtype = bytes.fromhex(data.item.type.cdata).decode("ascii")
         dcode = bytes.fromhex(data.item.code.cdata).decode("ascii")
-        
+
         data = getattr(data.item, "data", None)
 
         if data is not None:
@@ -154,13 +161,15 @@ class ClientMPD():
 
     def add_args(argparse):  # pylint: disable=no-self-argument
         """Expand argparse instance with client-specific args."""
-        argparse.add_argument("--port",
-                    help="Use a custom mpd port.",
-                    default=6600)
+        argparse.add_argument(
+            "--port",
+            help="Use a custom mpd port.",
+            default=6600)
 
-        argparse.add_argument("--server",
-                    help="Use a remote server instead of localhost.",
-                    default="localhost")
+        argparse.add_argument(
+            "--server",
+            help="Use a remote server instead of localhost.",
+            default="localhost")
 
     def currentsong(self):
         """Return current song details."""

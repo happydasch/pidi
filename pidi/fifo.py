@@ -1,8 +1,14 @@
+"""
+Basic fifo handler.
+"""
 import os
 import select
 
 
 class FIFO:
+    """
+    Basic fifo handler.
+    """
     def __init__(self, fifo_name, eol="\n", skip_create=False):
         self.fifo_name = fifo_name
         self.eol = eol
@@ -31,12 +37,13 @@ class FIFO:
             self._f = None
 
     def read(self):
+        """Read data from the fifo."""
         if self._f is None:
             self._f = os.open(self.fifo_name, os.O_RDONLY | os.O_NONBLOCK)
 
         # Check for inbound command
-        r, w, e = select.select([self._f], [], [], 0)
-        if self._f in r:
+        fifos, _, _ = select.select([self._f], [], [], 0)
+        if self._f in fifos:
             while True:
                 try:
                     char = os.read(self._f, 1).decode("UTF-8")
