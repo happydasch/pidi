@@ -21,11 +21,13 @@ import sys
 
 from .display import get_display_types
 from .client import get_client_types
+from .control import get_control_types
+
 
 from .__init__ import __version__
 
 
-def get_args(display_types, client_types):
+def get_args(display_types, client_types, control_types):
     """Get the script arguments."""
     description = "pidi - Download and display album art \
                    for mpd tracks."
@@ -64,6 +66,10 @@ def get_args(display_types, client_types):
                      help="Client class to use.",
                      default='mpd')
 
+    arg.add_argument("--control", choices=control_types.keys(),
+                     help="Control class to use.",
+                     default='dummy')
+
     # Strip out --help so we can parse_known_args
     # without triggering help text output.
     has_help = False
@@ -79,6 +85,8 @@ def get_args(display_types, client_types):
     display_types[args.display].add_args(arg)
 
     client_types[args.client].add_args(arg)
+
+    control_types[args.control].add_args(arg)
 
     # Add --help back if it was supplied
     if has_help:
@@ -98,8 +106,9 @@ def main():
     """Main script function."""
     display_types = get_display_types()
     client_types = get_client_types()
+    control_types = get_control_types()
 
-    args = get_args(display_types, client_types)
+    args = get_args(display_types, client_types, control_types)
     process_args(args)
 
     if args.no_display:
@@ -110,6 +119,9 @@ def main():
 
     client = client_types[args.client](args)
 
+    control = control_types[args.control](args)
+    control.set_client(client)
+
     last_track = ''
     last_update = 0
 
@@ -118,13 +130,20 @@ def main():
             status = client.status()
             currentsong = client.currentsong()
 
+            control.update_controls()
+
             if status == {} or currentsong == {}:
                 pass  # No status or song info available
             else:
                 title = currentsong.get('title', 'Untitled')
                 artist = currentsong.get('artist', 'No Artist')
                 album = currentsong.get('album', title)
-
+                if isinstance(title, list):
+                    title = ", ".join(title)
+                if isinstance(artist, list):
+                    artist = ", ".join(artist)
+                if isinstance(album, list):
+                    album = ", ".join(album)
                 current_track = f"{title} - {artist}, {album}"
 
                 if current_track != last_track:

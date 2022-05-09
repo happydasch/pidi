@@ -196,6 +196,12 @@ class ClientMPD():
         artist = song.get('artist')
         title = song.get('title')
         album = song.get('album', title)
+        if isinstance(artist, list):
+            artist = ", ".join(artist)
+        if isinstance(title, list):
+            title = ", ".join(title)
+        if isinstance(album, list):
+            album = ", ".join(album)
         file_name = "{artist}_{album}_{size}.jpg".format(
             artist=artist,
             album=album,
