@@ -1,3 +1,4 @@
+import dbus
 import RPi.GPIO as GPIO
 
 from pkg_resources import iter_entry_points
@@ -8,7 +9,8 @@ def get_control_types():
     """Enumerate the pidi.plugin.client entry point and return installed client types."""
     control_types = {
         'dummy': ControlDummy,
-        'gpiompd': ControlGPIOMPD
+        'gpiompd': ControlGPIOMPD,
+        'gpioshairport': ControlGPIOShairPort
     }
 
     for entry_point in iter_entry_points("pidi.plugin.control"):
@@ -98,4 +100,74 @@ class ControlGPIOMPD():
             self._client.volume(5)
             print("Control volup")
         else:
-            raise Exception("Unknown pin: {}".format(pin))
+            raise Exception(f"Unknown pin: {pin} ({label})")
+
+
+class ControlGPIOShairPort():
+
+    # src: https://github.com/pimoroni/pirate-audio/blob/master/examples/shairport-sync-control.py
+    # The buttons on Pirate Audio are connected to pins 5, 6, 16 and 24
+    # Boards prior to 23 January 2020 used 5, 6, 16 and 20
+    # try changing 24 to 20 if your Y button doesn't work.
+    BUTTONS = [5, 6, 16, 24]
+
+    # These correspond to buttons A, B, X and Y respectively
+    LABELS = ['A', 'B', 'X', 'Y']
+
+    """Control buttons on GPIO."""
+    def __init__(self, args=None):
+        # Set up RPi.GPIO with the "BCM" numbering scheme
+        GPIO.setmode(GPIO.BCM)
+        # Buttons connect to ground when pressed, so we should set them up
+        # with a "PULL UP", which weakly pulls the input signal to 3.3V.
+        GPIO.setup(self.BUTTONS, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # Loop through out buttons and attach the "handle_button" function to each
+        # We're watching the "FALLING" edge (transition from 3.3V to Ground) and
+        # picking a generous bouncetime of 100ms to smooth out button presses.
+        for pin in self.BUTTONS:
+            GPIO.add_event_detect(
+                pin, GPIO.FALLING,
+                self.handle_button,
+                bouncetime=100)
+        self._init_dbus()
+
+    def _init_dbus(self):
+        bus = dbus.SystemBus()
+        proxy = bus.get_object(
+            "org.gnome.ShairportSync",
+            "/org/gnome/ShairportSync")
+        interface = dbus.Interface(
+            proxy, dbus_interface="org.gnome.ShairportSync.RemoteControl"
+        )
+        self._playpause = interface.get_dbus_method("PlayPause")
+        self._next = interface.get_dbus_method("Next")
+        self._volumeup = interface.get_dbus_method("VolumeUp")
+        self._volumedown = interface.get_dbus_method("VolumeDown")
+
+    def add_args(argparse):
+        pass
+
+    def set_client(self, client):
+        pass
+
+    def update_controls(self):
+        pass
+
+    # "handle_button" will be called every time a button is pressed
+    # It receives one xargument: the associated input pin.
+    def handle_button(self, pin):
+        label = self.LABELS[self.BUTTONS.index(pin)]
+        if pin == self.BUTTONS[0]:    # A
+            self._playpause()
+            print("Control pause")
+        elif pin == self.BUTTONS[2]:  # X
+            self._next()
+            print("Control next")
+        elif pin == self.BUTTONS[1]:  # B
+            self._volumedown()
+            print("Control voldown")
+        elif pin == self.BUTTONS[3]:  # Y
+            self._volumeup()
+            print("Control volup")
+        else:
+            raise Exception(f"Unknown pin: {pin} ({label})")
